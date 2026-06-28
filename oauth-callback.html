@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>登录中...</title></head>
+<body><script>
+// Get code from Google's redirect
+const params = new URLSearchParams(window.location.search);
+const code = params.get('code');
+const state = params.get('state');
+const error = params.get('error');
+
+// Redirect to main page with same params
+const base = window.location.origin + window.location.pathname.replace(/\/oauth-callback\.html$/, '/');
+const redirect = base + (code ? '?code=' + encodeURIComponent(code) + '&state=' + encodeURIComponent(state || '') : '?error=' + encodeURIComponent(error || ''));
+window.location.replace(redirect);
+</script></body>
+</html>
