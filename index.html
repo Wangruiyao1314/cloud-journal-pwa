@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Cloud Journal">
+<meta name="theme-color" content="#f2f2f7">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/icon-180.png">
+<title>Cloud Journal</title>
+<style>
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bg: #f2f2f7; --card: #fff;
+  --primary: #007aff; --text: #1c1c1e;
+  --secondary: #8e8e93; --sep: #c6c6c8;
+  --google-blue: #4285f4;
+  --google-blue-dark: #3367d6;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',sans-serif;
+  background:var(--bg);color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;-webkit-user-select:none;
+}
+#app{height:100%;display:flex;flex-direction:column;padding-top:var(--safe-top)}
+
+.nav-bar{
+  background:rgba(242,242,247,0.85);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  padding:8px 16px;flex-shrink:0;
+  border-bottom:0.5px solid var(--sep);
+}
+.nav-bar h1{font-size:34px;font-weight:700;letter-spacing:0.37px;line-height:1.2}
+.nav-bar .sub{font-size:13px;color:var(--secondary);margin-top:2px}
+
+.tab-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px 8px;position:relative}
+.tab-bar{
+  display:flex;background:rgba(249,249,249,0.94);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:0.5px solid var(--sep);flex-shrink:0;padding-bottom:var(--safe-bottom);
+}
+.tab-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:6px 0 4px;cursor:pointer;color:var(--secondary);transition:color .15s;gap:2px;
+}
+.tab-item.active{color:var(--primary)}
+.tab-item svg{width:24px;height:24px}
+.tab-item span{font-size:10px;font-weight:500;letter-spacing:.1px}
+
+.section{margin-top:20px}
+.section-hdr{font-size:13px;color:var(--secondary);text-transform:uppercase;letter-spacing:-.08px;padding:0 16px 6px}
+.cell-group{background:var(--card);border-radius:10px;overflow:hidden}
+.cell{
+  display:flex;align-items:center;padding:12px 16px;cursor:pointer;min-height:44px
+}
+.cell:not(:last-child){border-bottom:0.5px solid var(--sep);margin-left:16px;padding-left:0}
+.cell:active{background:#e5e5ea}
+.cell-icon{
+  width:32px;height:32px;border-radius:7px;display:flex;align-items:center;
+  justify-content:center;margin-right:12px;flex-shrink:0
+}
+.cell-icon svg{width:18px;height:18px}
+.cell-body{flex:1;min-width:0}
+.cell-title{font-size:17px;line-height:1.3}
+.cell-detail{font-size:13px;color:var(--secondary);margin-top:2px}
+.cell-chevron{color:#c7c7cc;flex-shrink:0;margin-left:8px}
+.audio-cell{display:flex;align-items:center;padding:12px 16px;gap:12px}
+.audio-play{
+  width:40px;height:40px;border-radius:50%;background:var(--primary);display:flex;
+  align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;border:none;color:#fff
+}
+.audio-play.playing{animation:pulse 1.5s ease-in-out infinite}
+.audio-play svg{width:18px;height:18px;margin-left:2px}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05);box-shadow:0 0 20px rgba(0,122,255,.4)}}
+.audio-info{flex:1;min-width:0}
+.audio-name{font-size:16px;font-weight:500}
+.audio-meta{font-size:13px;color:var(--secondary)}
+.audio-progress{height:3px;background:#e5e5ea;border-radius:1.5px;margin-top:6px;overflow:hidden}
+.audio-progress div{height:100%;background:var(--primary);border-radius:1.5px;transition:width 0.3s linear;width:0}
+
+.detail-view{
+  position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);
+  z-index:100;display:flex;flex-direction:column;padding-top:var(--safe-top);
+  transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+}
+.detail-view.open{transform:translateX(0)}
+.detail-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px}
+.back-btn{
+  width:32px;height:32px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;background:rgba(0,0,0,.05);cursor:pointer;color:var(--primary)
+}
+.detail-hdr{display:flex;align-items:center;padding:8px 16px;gap:8px;
+  background:rgba(242,242,247,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:0.5px solid var(--sep)}
+.detail-label{font-size:17px;font-weight:600}
+.detail-date{font-size:15px;color:var(--secondary);margin:8px 0 4px}
+.detail-title{font-size:28px;font-weight:700;line-height:1.2;margin-bottom:12px}
+.detail-body{font-size:17px;line-height:1.6;color:#3a3a3c}
+.detail-body p{margin-bottom:12px}
+.detail-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;text-align:center;padding:40px;color:var(--secondary)}
+.detail-empty svg{width:48px;height:48px;margin-bottom:12px;opacity:.5}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 40px;text-align:center}
+.empty svg{width:64px;height:64px;color:#c7c7cc;margin-bottom:16px}
+.empty h3{font-size:20px;font-weight:600;margin-bottom:8px}
+.empty p{font-size:15px;color:var(--secondary);line-height:1.4}
+.badge{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
+.badge.on{background:#34c759;color:#fff}
+.badge.off{background:#e5e5ea;color:var(--secondary)}
+.spinner{width:20px;height:20px;border:2px solid rgba(0,122,255,.2);border-top-color:var(--primary);
+  border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-row{display:flex;align-items:center;justify-content:center;padding:30px;gap:10px;color:var(--secondary);font-size:14px}
+.toast{
+  position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);
+  color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:500;
+  z-index:999;opacity:0;transition:opacity .25s;pointer-events:none
+}
+.toast.show{opacity:1}
+.icon-j{background:#fce4d6;color:#ed7d31}
+.icon-a{background:#e2f0fb;color:var(--primary)}
+.icon-f{background:#e8f5e9;color:#34c759}
+.icon-google{background:#e8f0fe;color:var(--google-blue)}
+
+.google-btn{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  width:100%;padding:14px;border-radius:12px;border:none;
+  background:#fff;color:#3c4043;font-size:16px;font-weight:500;
+  font-family:inherit;cursor:pointer;
+  box-shadow:0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+  transition:box-shadow .2s, background .2s;
+}
+.google-btn:active{background:#f8f9fa;box-shadow:0 1px 2px rgba(0,0,0,0.12)}
+.google-btn svg{width:20px;height:20px}
+.google-btn .spinner{border-top-color:var(--google-blue);width:18px;height:18px}
+
+.search-bar{
+  display:flex;align-items:center;background:#e5e5ea;border-radius:10px;
+  padding:8px 12px;gap:6px;margin:8px 0 16px
+}
+.search-bar input{flex:1;border:none;background:transparent;font-size:16px;color:var(--text);outline:none;font-family:inherit}
+.search-bar input::placeholder{color:var(--secondary)}
+
+.modal{
+  position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;
+  align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s
+}
+.modal.show{opacity:1;pointer-events:auto}
+.modal-sheet{
+  background:var(--bg);border-radius:13px 13px 0 0;width:100%;max-width:600px;
+  padding:12px 0 0;padding-bottom:var(--safe-bottom);
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)
+}
+.modal.show .modal-sheet{transform:translateY(0)}
+.modal-handle{width:36px;height:5px;background:#c7c7cc;border-radius:3px;margin:0 auto 12px}
+
+/* Settings sections */
+.settings-desc{font-size:13px;color:var(--secondary);padding:6px 16px 0;line-height:1.4}
+.profile-section{display:flex;align-items:center;gap:12px;padding:16px}
+.profile-avatar{
+  width:48px;height:48px;border-radius:50%;background:var(--google-blue);
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:20px;font-weight:600;flex-shrink:0
+}
+.profile-avatar img{width:48px;height:48px;border-radius:50%}
+.profile-info{flex:1}
+.profile-name{font-size:17px;font-weight:600}
+.profile-email{font-size:14px;color:var(--secondary)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="nav-bar">
+    <h1 id="navTitle">Cloud Journal</h1>
+    <div class="sub" id="navSub">未连接</div>
+  </div>
+  <div class="tab-content" id="tabContent"></div>
+  <div class="tab-bar">
+    <div class="tab-item active" data-tab="journal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="18" height="20" rx="3"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="13" x2="15" y2="13"/><line x1="7" y1="18" x2="12" y2="18"/></svg>
+      <span>日记</span>
+    </div>
+    <div class="tab-item" data-tab="recordings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a9 9 0 0 1 9 9v5a3 3 0 0 1-3 3h-3"/><path d="M3 13V9a9 9 0 0 1 9-9"/><circle cx="12" cy="19" r="4"/></svg>
+      <span>录音</span>
+    </div>
+    <div class="tab-item" data-tab="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>设置</span>
+    </div>
+  </div>
+  <div class="detail-view" id="detailView">
+    <div class="detail-hdr">
+      <div class="back-btn" id="detailBack">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 4 7 12 15 20"/></svg>
+      </div>
+      <span class="detail-label" id="detailLabel">日记</span>
+    </div>
+    <div class="detail-scroll" id="detailScroll">
+      <div class="detail-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="2" width="18" height="20" rx="3"/><line x1="7" y1="8" x2="17" y2="8"/></svg>
+        <p>选择一篇日记查看</p>
+      </div>
+    </div>
+  </div>
+  <div class="modal" id="modal">
+    <div class="modal-sheet" id="modalSheet"></div>
+  </div>
+  <div class="toast" id="toast"></div>
+</div>
+<script>
+
+// ─── Configuration ───
+const GOOGLE_CLIENT_ID = localStorage.googleClientId || '';
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.readonly openid profile email';
+const REDIRECT_URI = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/oauth-callback.html');
+
+// ─── App State ───
+const S = {
+  tab: 'journal',
+  cloud: localStorage.cloudProvider || '',
+  dropboxToken: localStorage.dropboxToken || '',
+  googleToken: null,   // in-memory only
+  googleRefreshToken: localStorage.googleRefreshToken || '',
+  googleExpiry: parseInt(localStorage.googleExpiry || '0'),
+  googleProfile: null,
+  journals: [],
+  recordings: [],
+  folders: [],
+  path: localStorage.cloudPath || '',
+  audio: null,
+  currentAudio: null,
+  search: '',
+  dropboxFolder: localStorage.dropboxFolder || 'journal',
+  googleFolder: localStorage.googleFolder || 'journal',
+  oauthPending: null,
+};
+
+// ─── DOM ───
+const $ = (s,p=document) => p.querySelector(s);
+const $$ = (s,p=document) => [...p.querySelectorAll(s)];
+const el = id => document.getElementById(id);
+
+// ─── Toast ───
+let toastTimer;
+function toast(msg) {
+  const t = el('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ─── Navigation ───
+function setTab(t) {
+  S.tab = t;
+  $$('.tab-item').forEach(e => e.classList.toggle('active', e.dataset.tab === t));
+  if (t === 'settings') {
+    el('navTitle').textContent = '设置';
+    el('navSub').textContent = S.cloud ? '已连接 ' + S.cloud : '未连接';
+  } else if (t === 'recordings') {
+    el('navTitle').textContent = '录音';
+    el('navSub').textContent = S.recordings.length + ' 个文件';
+  } else {
+    el('navTitle').textContent = 'Cloud Journal';
+    el('navSub').textContent = S.journals.length + ' 篇日记';
+  }
+  closeDetail();
+  render();
+}
+$$('.tab-item').forEach(e => e.addEventListener('click', () => setTab(e.dataset.tab)));
+
+// ─── PKCE Helpers ───
+function dec2hex(dec) { return ('0' + dec.toString(16)).slice(-2); }
+function generateCodeVerifier() {
+  const array = new Uint8Array(64);
+  crypto.getRandomValues(array);
+  return Array.from(array, dec2hex).join('');
+}
+async function generateCodeChallenge(verifier) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+// ─── Google OAuth PKCE ───
+async function googleSignIn() {
+  if (!GOOGLE_CLIENT_ID) {
+    showGoogleSetup();
+    return;
+  }
+  const verifier = generateCodeVerifier();
+  const challenge = await generateCodeChallenge(verifier);
+  const state = generateCodeVerifier().slice(0, 32);
+
+  S.oauthPending = { verifier, state };
+
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    response_type: 'code',
+    scope: GOOGLE_SCOPES,
+    access_type: 'offline',
+    prompt: 'consent',
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    state: state
+  });
+
+  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+}
+
+async function handleOAuthCallback() {
+  const url = new URL(window.location.href);
+  const code = url.searchParams.get('code');
+  const error = url.searchParams.get('error');
+  const state = url.searchParams.get('state');
+
+  if (error) {
+    toast('登录失败: ' + error);
+    history.replaceState({}, '', window.location.pathname);
+    setTab('settings');
+    return;
+  }
+  if (!code || !S.oauthPending) {
+    history.replaceState({}, '', window.location.pathname);
+    setTab('settings');
+    return;
+  }
+  if (state !== S.oauthPending.state) {
+    toast('安全验证失败');
+    history.replaceState({}, '', window.location.pathname);
+    setTab('settings');
+    return;
+  }
+
+  // Show loading
+  el('tabContent').innerHTML = '<div class="load-row"><div class="spinner"></div><span>正在登录...</span></div>';
+
+  try {
+    const tokenResp = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        redirect_uri: REDIRECT_URI,
+        grant_type: 'authorization_code',
+        code_verifier: S.oauthPending.verifier
+      })
+    });
+
+    if (!tokenResp.ok) {
+      const err = await tokenResp.json();
+      throw new Error(err.error_description || 'Token 交换失败');
+    }
+
+    const tokens = await tokenResp.json();
+    S.googleToken = tokens.access_token;
+    S.googleExpiry = Date.now() + (tokens.expires_in * 1000);
+
+    if (tokens.refresh_token) {
+      S.googleRefreshToken = tokens.refresh_token;
+      localStorage.googleRefreshToken = tokens.refresh_token;
+    }
+    localStorage.googleExpiry = S.googleExpiry;
+
+    // Fetch user profile
+    const profileResp = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { 'Authorization': 'Bearer ' + S.googleToken }
+    });
+    if (profileResp.ok) {
+      S.googleProfile = await profileResp.json();
+    }
+
+    S.cloud = 'google';
+    localStorage.cloudProvider = 'google';
+
+    history.replaceState({}, '', window.location.pathname);
+
+    // Load Drive files
+    await loadCloudFiles();
+    toast('已登录 Google ✓');
+  } catch(e) {
+    toast('登录失败: ' + e.message);
+    history.replaceState({}, '', window.location.pathname);
+  }
+
+  S.oauthPending = null;
+  setTab(S.tab);
+}
+
+async function refreshGoogleToken() {
+  if (!S.googleRefreshToken) return false;
+  try {
+    const resp = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID,
+        grant_type: 'refresh_token',
+        refresh_token: S.googleRefreshToken
+      })
+    });
+    if (!resp.ok) {
+      S.googleToken = null;
+      localStorage.removeItem('googleRefreshToken');
+      localStorage.removeItem('googleExpiry');
+      return false;
+    }
+    const tokens = await resp.json();
+    S.googleToken = tokens.access_token;
+    S.googleExpiry = Date.now() + (tokens.expires_in * 1000);
+    localStorage.googleExpiry = S.googleExpiry;
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+async function ensureGoogleToken() {
+  if (S.googleToken && Date.now() < S.googleExpiry - 300000) return true;
+  if (S.googleRefreshToken) {
+    return await refreshGoogleToken();
+  }
+  return false;
+}
+
+// ─── Google Drive API ───
+async function listGoogleFiles() {
+  const ok = await ensureGoogleToken();
+  if (!ok) return;
+
+  let query = 'trashed=false';
+  if (S.path) query += ' and \'' + S.path + '\' in parents';
+
+  const resp = await fetch(
+    'https://www.googleapis.com/drive/v3/files?pageSize=100&fields=files(id,name,mimeType,modifiedTime,size,parents)&q=' + encodeURIComponent(query),
+    { headers: { 'Authorization': 'Bearer ' + S.googleToken } }
+  );
+  if (!resp.ok) throw new Error('Drive API error: ' + resp.status);
+  const data = await resp.json();
+
+  S.folders = [];
+  S.journals = [];
+  S.recordings = [];
+  for (const f of data.files || []) {
+    if (f.mimeType === 'application/vnd.google-apps.folder') {
+      S.folders.push({ name: f.name, path: f.id });
+    } else if (f.mimeType.startsWith('text/') || f.name.match(/\.(md|txt)$/i)) {
+      S.journals.push({ name: f.name, id: f.id, modified: f.modifiedTime, size: f.size, path: f.id, type: 'google' });
+    } else if (f.mimeType.startsWith('audio/') || f.name.match(/\.(mp3|m4a|wav|aac|ogg|flac|aiff)$/i)) {
+      S.recordings.push({ name: f.name, id: f.id, modified: f.modifiedTime, size: f.size, path: f.id, type: 'google' });
+    }
+  }
+  sortResults();
+}
+
+// ─── Dropbox API ───
+async function listDropboxFiles() {
+  const resp = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + S.dropboxToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: S.path || '', recursive: false })
+  });
+  if (!resp.ok) throw new Error('Dropbox API error: ' + resp.status);
+  const data = await resp.json();
+
+  S.folders = [];
+  S.journals = [];
+  S.recordings = [];
+  for (const e of data.entries) {
+    if (e['.tag'] === 'folder') {
+      S.folders.push({ name: e.name, path: e.path_lower });
+    } else {
+      const ext = e.name.split('.').pop().toLowerCase();
+      const item = { name: e.name, path: e.path_lower, modified: e.server_modified, size: e.size, type: 'dropbox' };
+      if (['md','txt'].includes(ext)) S.journals.push(item);
+      else if (['mp3','m4a','wav','aac','ogg','flac','aiff'].includes(ext)) S.recordings.push(item);
+    }
+  }
+  sortResults();
+}
+
+function sortResults() {
+  S.journals.sort((a,b) => new Date(b.modified) - new Date(a.modified));
+  S.recordings.sort((a,b) => new Date(b.modified) - new Date(a.modified));
+}
+
+async function loadCloudFiles() {
+  if (!S.cloud) return;
+  try {
+    if (S.cloud === 'dropbox') await listDropboxFiles();
+    else if (S.cloud === 'google') await listGoogleFiles();
+    el('navSub').textContent = S.tab === 'journal' ? S.journals.length + ' 篇日记' : S.recordings.length + ' 个录音';
+  } catch(e) {
+    if (e.message.includes('401') && S.cloud === 'google') {
+      const ok = await refreshGoogleToken();
+      if (ok) { await loadCloudFiles(); return; }
+      S.cloud = '';
+      localStorage.removeItem('cloudProvider');
+    }
+    toast('加载失败: ' + e.message);
+  }
+}
+
+// ─── Fetch Journal Content ───
+async function fetchJournalContent(item) {
+  let text = '';
+  if (item.type === 'dropbox') {
+    const resp = await fetch('https://content.dropboxapi.com/2/files/download', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + S.dropboxToken, 'Dropbox-API-Arg': JSON.stringify({ path: item.path }) }
+    });
+    text = await resp.text();
+  } else {
+    const ok = await ensureGoogleToken();
+    if (!ok) { item.content = '<p style="color:var(--secondary)">需要重新登录</p>'; return; }
+    const resp = await fetch('https://www.googleapis.com/drive/v3/files/' + item.id + '?alt=media', {
+      headers: { 'Authorization': 'Bearer ' + S.googleToken }
+    });
+    text = await resp.text();
+  }
+  item.content = renderMd(text);
+  if (S.detailItem === item) openDetail('journal', item);
+}
+
+// ─── Audio ───
+async function fetchAudioUrl(item) {
+  if (item.type === 'dropbox') {
+    const resp = await fetch('https://api.dropboxapi.com/2/files/get_temporary_link', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + S.dropboxToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: item.path })
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return data.link;
+  }
+  const ok = await ensureGoogleToken();
+  if (!ok) return null;
+  return 'https://www.googleapis.com/drive/v3/files/' + item.id + '?alt=media&supportsAllDrives=true';
+}
+
+function toggleAudio(item, btn) {
+  if (S.audio && S.currentAudio === item.path && !S.audio.paused) {
+    S.audio.pause();
+    btn.classList.remove('playing');
+    updatePlayIcon(btn, false);
+    return;
+  }
+  stopAudio();
+  fetchAudioUrl(item).then(url => {
+    if (!url) { toast('无法加载音频'); return; }
+    S.audio = new Audio(url);
+    S.audio.play().catch(() => toast('播放失败'));
+    S.currentAudio = item.path;
+    btn.classList.add('playing');
+    updatePlayIcon(btn, true);
+    S.audio.addEventListener('ended', () => {
+      btn.classList.remove('playing');
+      updatePlayIcon(btn, false);
+      S.currentAudio = null;
+      S.audio = null;
+    });
+    S.audio.addEventListener('timeupdate', () => updateProgress(item.path));
+  });
+}
+
+function stopAudio() {
+  if (S.audio) { S.audio.pause(); S.audio = null; }
+  S.currentAudio = null;
+}
+
+function updatePlayIcon(btn, playing) {
+  btn.innerHTML = playing
+    ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="7,4 20,12 7,20"/></svg>';
+}
+
+function updateProgress(path) {
+  if (!S.audio || S.currentAudio !== path) return;
+  const pct = S.audio.duration ? (S.audio.currentTime / S.audio.duration * 100) : 0;
+  const bars = $$('.audio-progress div[data-path="' + path.replace(/[^a-zA-Z0-9]/g,'') + '"]');
+  bars.forEach(b => b.style.width = pct + '%');
+}
+
+// ─── Detail View ───
+let S_detailItem = null;
+let S_detailType = null;
+
+function openDetail(type, item) {
+  const scroll = el('detailScroll');
+  el('detailLabel').textContent = type === 'journal' ? '日记' : '录音';
+  S_detailItem = item;
+  S_detailType = type;
+
+  if (type === 'journal') {
+    const d = new Date(item.modified);
+    scroll.innerHTML = ''
+      + '<div class="detail-date">' + d.toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'}) + '</div>'
+      + '<div class="detail-title">' + h(item.name.replace(/\.(md|txt)$/,'')) + '</div>'
+      + '<div class="detail-body">' + (item.content || '<p style="color:var(--secondary)">加载中...</p>') + '</div>';
+    if (!item.content) fetchJournalContent(item);
+  } else {
+    const isPlaying = S.currentAudio === item.path;
+    const dur = item.duration ? fmtDuration(item.duration) : '';
+    scroll.innerHTML = ''
+      + '<div class="detail-date" style="margin-bottom:16px;">' + fmtTime(new Date(item.modified)) + '</div>'
+      + '<div class="cell-group" style="margin-bottom:16px">'
+      + '  <div class="audio-cell">'
+      + '    <button class="audio-play' + (isPlaying ? ' playing' : '') + '" data-path="' + h(item.path) + '">'
+      + '      <svg viewBox="0 0 24 24" fill="currentColor">' + (isPlaying
+          ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+          : '<polygon points="7,4 20,12 7,20"/>') + '</svg>'
+      + '    </button>'
+      + '    <div class="audio-info">'
+      + '      <div class="audio-name">' + h(item.name) + '</div>'
+      + '      <div class="audio-meta">' + dur + ' · ' + fmtSize(item.size) + '</div>'
+      + '      <div class="audio-progress"><div data-path="' + h(item.path).replace(/[^a-zA-Z0-9]/g,'') + '" style="width:0%"></div></div>'
+      + '    </div>'
+      + '  </div></div>';
+
+    setTimeout(() => {
+      const btn = $('.audio-play', scroll);
+      if (btn) btn.addEventListener('click', e => { e.stopPropagation(); toggleAudio(item, btn); });
+    }, 50);
+  }
+  el('detailView').classList.add('open');
+}
+
+function closeDetail() {
+  el('detailView').classList.remove('open');
+  stopAudio();
+  S_detailItem = null;
+}
+el('detailBack').addEventListener('click', closeDetail);
+
+// ─── Render ───
+function h(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtTime(d) {
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 86400000) return '今天 ' + d.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+  if (diff < 172800000) return '昨天 ' + d.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+  return d.toLocaleDateString('zh-CN', {month:'long',day:'numeric'}) + ' ' + d.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+}
+function fmtSize(b) { if(!b)return''; if(b<1024)return b+' B'; if(b<1048576)return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+function fmtDuration(s) { if(!s)return''; const m=Math.floor(s/60); const sec=Math.floor(s%60); return m+':'+String(sec).padStart(2,'0'); }
+
+function renderMd(text) {
+  return text.split('\n').map(line => {
+    line = h(line);
+    if (/^### /.test(line)) return '<h3 style="font-size:20px;font-weight:600;margin:16px 0 8px">' + line.slice(4) + '</h3>';
+    if (/^## /.test(line)) return '<h2 style="font-size:22px;font-weight:700;margin:20px 0 8px">' + line.slice(3) + '</h2>';
+    if (/^# /.test(line)) return '<h1 style="font-size:26px;font-weight:700;margin:20px 0 8px">' + line.slice(2) + '</h1>';
+    if (/^\- /.test(line)) return '<li style="margin-left:16px;margin-bottom:4px">' + line.slice(2) + '</li>';
+    if (line === '') return '<br>';
+    return '<p>' + line + '</p>';
+  }).join('\n');
+}
+
+function render() {
+  const tc = el('tabContent');
+  tc.innerHTML = '';
+
+  if (S.tab === 'journal') {
+    if (S.cloud) {
+      if (S.folders.length > 0) {
+        tc.innerHTML += '<div class="section"><div class="section-hdr">文件夹</div><div class="cell-group">'
+          + S.folders.map(f => '<div class="cell" data-folder="' + h(f.path) + '">'
+            + '<div class="cell-icon icon-f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>'
+            + '<div class="cell-body"><div class="cell-title">' + h(f.name) + '</div></div>'
+            + '<div class="cell-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 4 17 12 9 20"/></svg></div>'
+            + '</div>').join('') + '</div></div>';
+      }
+      if (S.journals.length === 0 && S.folders.length === 0) {
+        tc.innerHTML += '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="2" width="18" height="20" rx="3"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="13" x2="15" y2="13"/></svg><h3>没有日记</h3><p>云端文件夹中还没有日记文件</p></div>';
+      } else if (S.journals.length > 0) {
+        tc.innerHTML += '<div class="section"><div class="section-hdr">日记</div><div class="cell-group">'
+          + S.journals.filter(j => !S.search || j.name.toLowerCase().includes(S.search.toLowerCase())).slice(0, 50).map(j => '<div class="cell" data-journal="' + h(j.path) + '">'
+            + '<div class="cell-icon icon-j"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="18" height="20" rx="3"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="13" x2="15" y2="13"/></svg></div>'
+            + '<div class="cell-body"><div class="cell-title">' + h(j.name.replace(/\.(md|txt)$/,'')) + '</div><div class="cell-detail">' + fmtTime(new Date(j.modified)) + ' · ' + fmtSize(j.size) + '</div></div>'
+            + '<div class="cell-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 4 17 12 9 20"/></svg></div>'
+            + '</div>').join('') + '</div></div>';
+      }
+    } else {
+      tc.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 12h-4a6 6 0 0 0-6-6V2"/></svg><h3>连接云服务</h3><p>前往「设置」连接 Google Drive 或 Dropbox<br>即可同步你的云端日记和录音</p></div>';
+    }
+    // Bind clicks
+    $$('.cell[data-journal]', tc).forEach(el => {
+      el.addEventListener('click', () => {
+        const path = el.dataset.journal;
+        const item = S.journals.find(j => j.path === path);
+        if (item) openDetail('journal', item);
+      });
+    });
+    $$('.cell[data-folder]', tc).forEach(el => {
+      el.addEventListener('click', () => {
+        S.path = el.dataset.folder;
+        localStorage.cloudPath = S.path;
+        setTab('journal');
+      });
+    });
+  }
+
+  else if (S.tab === 'recordings') {
+    if (S.cloud) {
+      if (S.recordings.length === 0) {
+        tc.innerHTML += '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg><h3>没有录音</h3><p>云端文件夹中还没有录音文件</p></div>';
+      } else {
+        tc.innerHTML += '<div class="search-bar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--secondary)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="搜索录音" id="recordingSearch" value="' + h(S.search) + '"></div>';
+        tc.innerHTML += '<div class="section"><div class="section-hdr">' + S.recordings.length + ' 个文件</div><div class="cell-group">'
+          + S.recordings.filter(r => !S.search || r.name.toLowerCase().includes(S.search.toLowerCase())).slice(0, 50).map(r => {
+              const isPlaying = S.currentAudio === r.path;
+              return '<div class="audio-cell">'
+              + '<button class="audio-play' + (isPlaying ? ' playing' : '') + '" data-path="' + h(r.path) + '">'
+              + '<svg viewBox="0 0 24 24" fill="currentColor">' + (isPlaying ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<polygon points="7,4 20,12 7,20"/>') + '</svg>'
+              + '</button>'
+              + '<div class="audio-info" data-path="' + h(r.path) + '">'
+              + '<div class="audio-name">' + h(r.name) + '</div>'
+              + '<div class="audio-meta">' + fmtTime(new Date(r.modified)) + ' · ' + fmtSize(r.size) + '</div>'
+              + '<div class="audio-progress"><div data-path="' + h(r.path).replace(/[^a-zA-Z0-9]/g,'') + '" style="width:0%"></div></div>'
+              + '</div></div>';
+            }).join('') + '</div></div>';
+      }
+    } else {
+      tc.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg><h3>连接云服务</h3><p>前往「设置」连接 Google Drive 或 Dropbox<br>即可播放你的录音文件</p></div>';
+    }
+    setTimeout(() => {
+      $$('.audio-play', tc).forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const path = btn.dataset.path;
+          const item = S.recordings.find(r => r.path === path);
+          if (item) toggleAudio(item, btn);
+        });
+      });
+      $$('.audio-info', tc).forEach(info => {
+        info.addEventListener('click', () => {
+          const path = info.dataset.path;
+          const item = S.recordings.find(r => r.path === path);
+          if (item) openDetail('recording', item);
+        });
+      });
+      const s = el('recordingSearch');
+      if (s) { s.addEventListener('input', () => { S.search = s.value; render(); }); }
+    }, 50);
+  }
+
+  else if (S.tab === 'settings') {
+    let googleSection = '';
+    if (S.cloud === 'google' && S.googleProfile) {
+      googleSection = '<div class="cell-group" style="margin-bottom:16px"><div class="profile-section">'
+        + (S.googleProfile.picture ? '<img class="profile-avatar" src="' + h(S.googleProfile.picture) + '" alt="">' : '<div class="profile-avatar">' + h((S.googleProfile.name||'?')[0]) + '</div>')
+        + '<div class="profile-info"><div class="profile-name">' + h(S.googleProfile.name || '') + '</div><div class="profile-email">' + h(S.googleProfile.email || '') + '</div></div>'
+        + '</div></div>'
+        + '<div class="cell-group" style="margin-bottom:16px"><div class="cell" style="justify-content:center;color:var(--color-danger)" data-action="disconnect-google"><div class="cell-title">断开 Google 连接</div></div></div>';
+    } else if (S.cloud === 'google') {
+      googleSection = '<div class="cell-group" style="margin-bottom:16px"><div class="cell" style="justify-content:center;color:var(--color-danger)" data-action="disconnect-google"><div class="cell-title">断开 Google 连接</div></div></div>';
+    }
+
+    tc.innerHTML = ''
+      + '<div class="section"><div class="section-hdr">云存储</div>'
+      + googleSection
+      + (S.cloud !== 'google' ? '<div style="padding:16px 0"><button class="google-btn" id="googleLoginBtn">'
+        + '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>'
+        + '<span>使用 Google 账号登录</span></button></div>' : '')
+      + '</div>'
+      + '<div class="section"><div class="section-hdr">Dropbox</div><div class="cell-group">'
+      + (S.cloud === 'dropbox'
+        ? '  <div class="cell" style="justify-content:center;color:var(--color-danger)" data-action="disconnect-dropbox"><div class="cell-title">断开 Dropbox 连接</div></div>'
+        : '  <div class="cell" data-action="connect-dropbox"><div class="cell-icon icon-a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l5 4-5 4 10 5 10-5-5-4 5-4z"/></svg></div><div class="cell-body"><div class="cell-title">连接 Dropbox</div><div class="cell-detail">使用 Access Token 连接</div></div><div class="cell-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 4 17 12 9 20"/></svg></div></div>')
+      + '</div></div>'
+      + '<div class="section"><div class="section-hdr">Google OAuth 设置</div><div class="cell-group">'
+      + '  <div class="cell" data-action="set-google-client">'
+      + '    <div class="cell-icon icon-google"><svg viewBox="0 0 24 24" fill="currentColor"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg></div>'
+      + '    <div class="cell-body"><div class="cell-title">OAuth Client ID</div><div class="cell-detail">' + (GOOGLE_CLIENT_ID ? '已设置 (' + GOOGLE_CLIENT_ID.slice(0,20) + '...)' : '设置后才能使用 Google 登录') + '</div></div>'
+      + '    <div class="cell-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 4 17 12 9 20"/></svg></div>'
+      + '  </div></div></div>'
+      + '<div class="section"><div class="section-hdr">关于</div><div class="cell-group">'
+      + '  <div class="cell" style="justify-content:center"><div class="cell-body" style="text-align:center"><div class="cell-title">Cloud Journal PWA</div><div class="cell-detail">v2.0 · Google OAuth PKCE + Dropbox</div></div></div>'
+      + '</div></div>';
+
+    // Bind settings actions
+    const googleBtn = el('googleLoginBtn');
+    if (googleBtn) googleBtn.addEventListener('click', googleSignIn);
+    $$('.cell[data-action]', tc).forEach(el => {
+      el.addEventListener('click', () => {
+        const a = el.dataset.action;
+        if (a === 'connect-dropbox') showDropboxAuth();
+        else if (a === 'disconnect-dropbox') { disconnectDropbox(); setTab('settings'); }
+        else if (a === 'disconnect-google') { disconnectGoogle(); setTab('settings'); }
+        else if (a === 'set-google-client') showGoogleClientSetup();
+      });
+    });
+  }
+}
+
+// ─── Dropbox Modal ───
+function showDropboxAuth() {
+  el('modalSheet').innerHTML = ''
+    + '<div class="modal-handle"></div>'
+    + '<div style="padding:0 16px;"><div class="section-hdr" style="padding:0 0 6px">连接 Dropbox</div>'
+    + '<p class="settings-desc" style="padding:0;margin-bottom:12px">在 dropbox.com/developers/apps 创建应用，生成 Access Token。</p>'
+    + '<div class="search-bar"><input type="text" id="dropboxTokenInput" placeholder="粘贴 Dropbox Access Token"></div>'
+    + '<div class="search-bar"><input type="text" id="dropboxFolderInput" placeholder="文件夹路径 (如 /journal)" value="' + h(S.dropboxFolder) + '"></div>'
+    + '<div class="cell-group"><div class="cell" style="justify-content:center;color:var(--primary);font-weight:500" id="saveDropbox"><div class="cell-title">连接</div></div></div></div>';
+  el('modal').classList.add('show');
+
+  el('saveDropbox').addEventListener('click', async () => {
+    const token = el('dropboxTokenInput').value.trim();
+    if (!token) { toast('请输入 Token'); return; }
+    S.dropboxToken = token;
+    S.dropboxFolder = el('dropboxFolderInput').value.trim() || 'journal';
+    localStorage.dropboxToken = token;
+    localStorage.dropboxFolder = S.dropboxFolder;
+    S.path = S.dropboxFolder.startsWith('/') ? S.dropboxFolder : '/' + S.dropboxFolder;
+    el('saveDropbox').innerHTML = '<div class="cell-title" style="display:flex;align-items:center;justify-content:center;gap:8px"><div class="spinner"></div> 验证中...</div>';
+    try {
+      await listDropboxFiles();
+      S.cloud = 'dropbox';
+      localStorage.cloudProvider = 'dropbox';
+      localStorage.cloudPath = S.path;
+      closeModal();
+      setTab('journal');
+      toast('已连接 Dropbox');
+    } catch(e) {
+      toast('连接失败: ' + e.message);
+      el('saveDropbox').innerHTML = '<div class="cell-title">连接</div>';
+    }
+  });
+}
+
+function disconnectDropbox() {
+  S.cloud = ''; S.dropboxToken = '';
+  localStorage.removeItem('cloudProvider');
+  localStorage.removeItem('dropboxToken');
+  toast('已断开 Dropbox');
+}
+
+function disconnectGoogle() {
+  S.cloud = ''; S.googleToken = null; S.googleRefreshToken = ''; S.googleProfile = null;
+  localStorage.removeItem('cloudProvider');
+  localStorage.removeItem('googleRefreshToken');
+  localStorage.removeItem('googleExpiry');
+  toast('已断开 Google Drive');
+}
+
+// ─── Google Client ID Setup Modal ───
+function showGoogleSetup() {
+  el('modalSheet').innerHTML = ''
+    + '<div class="modal-handle"></div>'
+    + '<div style="padding:0 16px;"><div class="section-hdr" style="padding:0 0 6px">Google OAuth 配置</div>'
+    + '<p class="settings-desc" style="padding:0;margin-bottom:12px">'
+    + '1. 前往 console.cloud.google.com<br>'
+    + '2. 创建项目 → 启用 Google Drive API<br>'
+    + '3. OAuth 同意屏幕 → 添加测试用户<br>'
+    + '4. 凭据 → 创建 OAuth 2.0 Client ID<br>'
+    + '5. 类型选「Web 应用」<br>'
+    + '6. 已获授权的重定向 URI 填写：<br>'
+    + '<b id="redirectUriDisplay">' + h(REDIRECT_URI) + '</b><br>'
+    + '7. 复制 Client ID 粘贴到下方</p>'
+    + '<div class="search-bar"><input type="text" id="googleClientIdInput" placeholder="粘贴 Client ID" value="' + h(GOOGLE_CLIENT_ID) + '"></div>'
+    + '<div class="cell-group"><div class="cell" style="justify-content:center;color:var(--primary);font-weight:500" id="saveGoogleClient"><div class="cell-title">保存</div></div></div></div>';
+  el('modal').classList.add('show');
+
+  el('saveGoogleClient').addEventListener('click', () => {
+    const cid = el('googleClientIdInput').value.trim();
+    localStorage.googleClientId = cid;
+    closeModal();
+    toast('Client ID 已保存。点击「使用 Google 账号登录」即可');
+    setTab('settings');
+  });
+}
+
+function showGoogleClientSetup() {
+  showGoogleSetup();
+}
+
+// ─── Modal ───
+function closeModal() { el('modal').classList.remove('show'); }
+el('modal').addEventListener('click', e => { if (e.target === el('modal')) closeModal(); });
+
+// ─── Init ───
+async function init() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+
+  // Check for OAuth callback
+  const url = new URL(window.location.href);
+  if (url.searchParams.has('code')) {
+    await handleOAuthCallback();
+    return;
+  }
+
+  // Restore state
+  if (S.cloud === 'dropbox' && S.dropboxToken) {
+    S.path = localStorage.cloudPath || '/' + S.dropboxFolder;
+    await loadCloudFiles().catch(() => {});
+  } else if (S.cloud === 'google' && S.googleRefreshToken) {
+    S.path = localStorage.cloudPath || '';
+    await refreshGoogleToken();
+    await loadCloudFiles().catch(() => {});
+  }
+
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
